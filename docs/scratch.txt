@@ -1,0 +1,92 @@
+[slurm-users] Large memory jobs stuck Pending. Should use --time parameter?
+39 views
+May 6, 2025, 11:08:17 AM
+to slurm...@schedmd.com
+
+Greetings,
+
+
+We are new to Slurm and we are trying to better understand why we’re
+seeing high-mem jobs stuck in Pending state indefinitely. Smaller (mem)
+jobs in the queue will continue to pass by the high mem jobs even when we
+bump priority on a pending high-mem job way up. We have been reading over
+the backfill scheduling page and what we think we're seeing is that we
+need to require that users specify a --time parameter on their jobs so
+that Backfill works properly. None of our users specify a --time param
+because we have never required it. Is that what we need to require
+in order to fix this situation? From the backfill page:  "Backfill
+scheduling is difficult without reasonable time limit estimates for
+jobs, but some configuration parameters that can help" and it goes on
+to list some config params that we have not set (DefaultTime, MaxTime,
+OverTimeLimit). We also see language such as, “Since the expected
+start time of pending jobs depends upon the expected completion time
+of running jobs, reasonably accurate time limits are important for
+backfill scheduling to work well.” So we suspect that we can achieve
+proper backfill scheduling by requiring that all users supply a "--time"
+parameter via a job submit plugin. Would that be a fair statement?
+
+Thank you in advance!
+
+-Mike Schor
+May 6, 2025, 11:14:27 AM
+to slurm...@lists.schedmd.com
+
+Certainly it would help. Setting reasonable defaults for time is good
+idea just in general. For instance we set 10 minutes as our default and
+anything longer people have to explicitly request (up to the MaxTime
+for the partition).
+
+More to the point, what Reason does the scheduler give for what the job
+is pending? If you do squeue or scontrol show job it should list the
+reason why its pending. If its Resources, then the scheduler is waiting
+for sufficient resources to free up to scheduler. If its is Priority
+then the job is pending due to other jobs ahead of it.
+
+-Paul Edmon-
+May 6, 2025, 12:10:27 PM
+to slurm...@lists.schedmd.com
+
+Thank you so much for the prompt response! This makes a lot of sense. We
+hadn't seen this explicitly stated in the docs, but it's what we gleaned
+from them.
+
+    -- 
+    slurm-users mailing list -- slurm...@lists.schedmd.com
+    To unsubscribe send an email to slurm-us...@lists.schedmd.com
+
+May 7, 2025, 12:41:35 AM
+to slurm...@lists.schedmd.com
+Mike via slurm-users wrote:
+
+> None of our users specify a --time param
+
+If that results in a runtime of more than 28 days, the scheduler does
+not reserve slots.
+
+May 7, 2025, 3:13:26 AM
+to slurm...@lists.schedmd.com
+Mike via slurm-users
+You might also need to look at the configuration parameter
+
+SchedulerParameters
+
+in particular
+
+bf_window=#
+The number of minutes into the future to look when considering jobs
+to schedule. Higher values result in more overhead and less respon‐
+siveness. A value at least as long as the highest allowed time limit
+is generally advisable to prevent job starvation. In order to limit
+the amount of data managed by the backfill scheduler, if the value of
+bf_window is increased, then it is generally advisable to also
+increase bf_resolution. This option applies only to Scheduler‐
+Type=sched/backfill. Default: 1440 (1 day), Min: 1, Max: 43200 (30
+days).
+
+Regards
+
+Loris Bennett
+
+-- 
+Dr. Loris Bennett (Herr/Mr)
+FUB-IT, Freie Universität Berlin
